@@ -67,6 +67,8 @@ END_OF_USAGE
       end
       printf("\n---- %10s ---->\n%s\n", "output for #{response[:sender]}", msg)
     end
+    printrpcstats
+    halt mc.stats
   end
 end
 
