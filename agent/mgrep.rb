@@ -1,14 +1,15 @@
 module MCollective
   module Agent
     class Mgrep<RPC::Agent
-      attr_accessor :file_list
+      attr_accessor :file_list, :blacklist
       action "search" do
 
-        build_file_list(request[:file])
+        check_files(request[:file])
 
-        check_black_list
+        check_blacklist if blacklist_enabled?
 
       	cmd = "/bin/grep"
+        cmd << " -c " if request[:count]
         cmd << " -v " if request[:invert]
         cmd << " -i " if request[:ignore_case]
         cmd << " -m #{request[:lines]} " if request[:lines]
@@ -19,33 +20,34 @@ module MCollective
 
     private
 
-    def build_file_list(f)
+    def check_files(f)
       @file_list = Dir.glob(f)
       if @file_list.empty?
-       reply[:results] = "No files match #{f}"
-       reply.fail!
+       reply.fail! "No files found matching #{f}"
       end
     end
 
-    def check_black_list
-      blist_file =  Config.instance.pluginconf["mgrep.blacklist"] || '/etc/mcollective/plugin.d/mgrep.cfg'
-      if File.exists?(blist_file)
+    def blacklist_enabled?
+      config = Config.instance.pluginconf["mgrep.blacklist"] || '/etc/mcollective/plugin.d/mgrep.cfg'
+      @blacklist = []
+      if File.exists?(config)
         begin
-          blist = IO.read(blist_file).split(/\n/).delete_if { |l| l =~ /(^#|^$)/ }
+          @blacklist = File.read(config).split(/\n/).delete_if do |l|
+            l =~ /(^#|^$)/
+          end
         rescue Exception => e
-          Log.warn("An exception occurred while opening #{blist_file}")
-        end
-      else
-        blist = []
+          Log.warn("An error occurred while trying to read #{config}")
+        end 
       end
+      @blacklist.count > 0
+    end
 
+    def check_blacklist
       matches = @file_list.inject([]) do |matches, file|
-        matches << file if blist.any? {|b| file.match(b.strip) }        
+        matches << file if @blacklist.any? {|b| file.match(b.strip) }
       end
 
-      if matches
-        reply.fail! "Blacklisted file(s): #{matches.join(' ')}"
-      end
+      reply.fail! "Blacklisted file(s): #{matches.join(' ')}" if matches
     end
     end
   end

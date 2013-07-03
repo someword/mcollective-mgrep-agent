@@ -6,6 +6,7 @@ mco mgrep [OPTIONS] [FILTERS] <ACTION> [CONCURRENCY|MESSAGE]
 Usage: mco mgrep search
 Usage: mco mgrep search --file /etc/hosts --pattern mailhost  [--lines LINES]
 Usage: mco mgrep search --file /etc/hosts --pattern mailhost  [--invert]
+Usage: mco mgrep search --file /etc/hosts --pattern mailhost  [--kount]
 
 The OPTIONS 'file' and 'pattern' are required
  The argument to '--file' can include a shell glob like this
@@ -20,6 +21,7 @@ The argument to '--lines' is how many lines to return.   These lines would be th
 
 The argument '--invert' turns on pattern inversion which matches *any* line which
 does not contain the pattern.
+
 
 The ACTION can be one of the following:
 
@@ -51,10 +53,15 @@ END_OF_USAGE
          :description => "Invert the match pattern",
          :type        => :bool,
          :required    => false
+  option :count,
+         :arguments   => ["-k","--kount"],
+         :description => "Get count of matching lines",
+         :type        => :bool,
+         :required    => false
 
   def main
     args = {}
-    [ :lines, :invert, :ignore_case, :file, :pattern ].each do |arg|
+    [ :lines, :invert, :ignore_case, :file, :pattern, :count ].each do |arg|
       args[arg] = configuration[arg] if configuration.include?(arg)
     end
 
@@ -65,9 +72,14 @@ END_OF_USAGE
       else
         msg = response[:statusmsg]
       end
-      printf("\n---- %10s ---->\n%s\n", "output for #{response[:sender]}", msg)
+
+      if options[:verbose]
+        printf("\n---- %10s ---->\n%s\n", "output for #{response[:sender]}", msg)
+      elsif response[:statuscode] == 0 && msg.size > 0
+        printf("\n---- %10s ---->\n%s\n", "output for #{response[:sender]}", msg)
+      end
     end
-    printrpcstats
+    printrpcstats :summarize => true
     halt mc.stats
   end
 end

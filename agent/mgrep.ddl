@@ -2,7 +2,7 @@ metadata :name => "mgrep",
          :description => "Grep via mcollective",
          :author => "derek.olsen@jivesoftware.com",
          :license => "ASL2.0",
-         :version => "0.0.3",
+         :version => "0.0.4",
          :url => "http://www.jivesoftware.com/",
          :timeout => 60
 
